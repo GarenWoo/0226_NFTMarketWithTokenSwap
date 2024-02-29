@@ -190,14 +190,12 @@ interface INFTMarket_V4 {
      * The function `permitPrePay` is recommended for the approval.
      *
      * @param _recipient the address which is the member of whitelist as well as the recipient of the claimed NFT
-     * @param _ERC20TokenAddr the ERC-20 token which is used to buy NFT(s)
-     * @param _ERC20TokenAmount the amount of the ERC-20 token used to buy NFT(s)
      * @param _promisedTokenId the tokenId corresponds to the NFT which is specified to a member in the NFT's whitelist
      * @param _merkleProof a dynamic array which contains Merkle proof is used for validating the membership of the caller. This should be offered by the project party
      * @param _promisedPriceInETH the promised price(unit: wei) of the NFT corresponding to `_promisedTokenId`, which is one of the fields of each Merkle tree node
      * @param _NFTWhitelistData a bytes variable offered by the owner of NFT Project. it contains the compressed infomation about the NFT whitelist
      */
-    function claimNFT(address _recipient, address _ERC20TokenAddr, uint256 _ERC20TokenAmount, uint256 _promisedTokenId, bytes32[] memory _merkleProof, uint256 _promisedPriceInETH, bytes memory _NFTWhitelistData) external;
+    function claimNFT(address _recipient, uint256 _promisedTokenId, bytes32[] memory _merkleProof, uint256 _promisedPriceInETH, bytes memory _NFTWhitelistData) external;
 
     /**
      * @dev Call multiple functions in any target address within one transaction.

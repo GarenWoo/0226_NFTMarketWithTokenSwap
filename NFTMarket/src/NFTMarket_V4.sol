@@ -229,48 +229,20 @@ contract NFTMarket_V4 is INFTMarket_V4, IERC721Receiver {
      * The function `permitPrePay` is recommended for the approval.
      *
      * @param _recipient the address which is the member of whitelist as well as the recipient of the claimed NFT
-     * @param _ERC20TokenAddr the ERC-20 token which is used to buy NFT(s)
-     * @param _ERC20TokenAmount the amount of the ERC-20 token used to buy NFT(s)
      * @param _promisedTokenId the tokenId corresponds to the NFT which is specified to a member in the NFT's whitelist
      * @param _merkleProof a dynamic array which contains Merkle proof is used for validating the membership of the caller. This should be offered by the project party
      * @param _promisedPriceInETH the promised price(unit: wei) of the NFT corresponding to `_promisedTokenId`, which is one of the fields of each Merkle tree node
      * @param _NFTWhitelistData a bytes variable offered by the owner of NFT Project. it contains the compressed infomation about the NFT whitelist
      */
-    function claimNFT(address _recipient, address _ERC20TokenAddr, uint256 _ERC20TokenAmount, uint256 _promisedTokenId, bytes32[] memory _merkleProof, uint256 _promisedPriceInETH, bytes memory _NFTWhitelistData)
+    function claimNFT(address _recipient, uint256 _promisedTokenId, bytes32[] memory _merkleProof, uint256 _promisedPriceInETH, bytes memory _NFTWhitelistData)
         public
     {   
-        bool isIERC20Supported = _support_IERC20(_ERC20TokenAddr);
-        if (!isIERC20Supported) {
-            revert notERC20Token(_ERC20TokenAddr);
-        }
         (address whitelistNFTAddr, bytes32 MerkleRoot) = abi.decode(_NFTWhitelistData, (address, bytes32));
         // Verify the membership of whitelist using Merkle tree.
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(_recipient, _promisedTokenId, _promisedPriceInETH))));
         _verifyMerkleProof(_merkleProof, MerkleRoot, leaf);
-
-        // Check if the token address equals `wrappedETHAddr`. If true, it indicates that the token is exactly WETH.
-        if (_ERC20TokenAddr != wrappedETHAddr) {
-            bool _success = IERC20(_ERC20TokenAddr).transferFrom(_recipient, address(this), _ERC20TokenAmount);
-            require(_success, "ERC-20 token transferFrom failed");
-
-            // token swap
-            uint256 tokenBalanceBeforeSwap = IERC20(_ERC20TokenAddr).balanceOf(address(this));
-            uint256 tokenAmountPaid = _swapTokenForExactWETH(_ERC20TokenAddr, _promisedPriceInETH, _ERC20TokenAmount);
-            uint256 tokenBalanceAfterSwap = IERC20(_ERC20TokenAddr).balanceOf(address(this));
-            if (tokenBalanceAfterSwap >= tokenBalanceBeforeSwap || tokenBalanceBeforeSwap - tokenBalanceAfterSwap != tokenAmountPaid) {
-                address[] memory _path = [_ERC20TokenAddr, wrappedETHAddr];
-                revert tokenSwapFailed(_path, _promisedPriceInETH, _ERC20TokenAmount);
-            }
-
-            // After paying the necessary amount of token, refund excess amount.
-            uint256 refundTokenAmount = _ERC20TokenAmount - tokenAmountPaid;
-            bool _refundTokenSuccess = IERC20(_ERC20TokenAddr).transfer(_recipient, refundTokenAmount);
-            require(_refundTokenSuccess, "Fail to refund exceed amount of token");
-        } else {
-            bool _ok = IWETH9(wrappedETHAddr).transferFrom(_recipient, address(this), _promisedPriceInETH);
-            require(_ok, "WETH transferFrom failed");
-        }
-
+        bool _ok = IWETH9(wrappedETHAddr).transferFrom(_recipient, address(this), _promisedPriceInETH);
+        require(_ok, "WETH transfer failed");
         address NFTOwner = IERC721(whitelistNFTAddr).ownerOf(_promisedTokenId);
         IERC721(whitelistNFTAddr).transferFrom(NFTOwner, _recipient, _promisedTokenId);
         userProfit[NFTOwner] += _promisedPriceInETH;
@@ -387,7 +359,9 @@ contract NFTMarket_V4 is INFTMarket_V4, IERC721Receiver {
             uint256 tokenAmountPaid = _swapTokenForExactWETH(_ERC20TokenAddr, NFTPrice, _tokenAmount);
             uint256 tokenBalanceAfterSwap = IERC20(_ERC20TokenAddr).balanceOf(address(this));
             if (tokenBalanceAfterSwap >= tokenBalanceBeforeSwap || tokenBalanceBeforeSwap - tokenBalanceAfterSwap != tokenAmountPaid) {
-                address[] memory _path = [_ERC20TokenAddr, wrappedETHAddr];
+                address[] memory _path = new address[](2);
+                _path[0] = _ERC20TokenAddr;
+                _path[1] = wrappedETHAddr;
                 revert tokenSwapFailed(_path, NFTPrice, _tokenAmount);
             }
 
@@ -429,7 +403,9 @@ contract NFTMarket_V4 is INFTMarket_V4, IERC721Receiver {
             uint256 tokenAmountPaid = _swapTokenForExactWETH(_ERC20TokenAddr, NFTPrice, amountInRequired);
             uint256 tokenBalanceAfterSwap = IERC20(_ERC20TokenAddr).balanceOf(address(this));
             if (tokenBalanceAfterSwap >= tokenBalanceBeforeSwap || tokenBalanceBeforeSwap - tokenBalanceAfterSwap != tokenAmountPaid) {
-                address[] memory _path = [_ERC20TokenAddr, wrappedETHAddr];
+                address[] memory _path = new address[](2);
+                _path[0] = _ERC20TokenAddr;
+                _path[1] = wrappedETHAddr;
                 revert tokenSwapFailed(_path, NFTPrice, amountInRequired);
             }
             result = tokenAmountPaid;
@@ -448,21 +424,27 @@ contract NFTMarket_V4 is INFTMarket_V4, IERC721Receiver {
     }
 
     function _swapExactTokenForWETH(address _ERC20TokenAddr, uint256 _amountIn, uint256 _amountOutMin) internal returns (uint256) {
-        address[] memory _path = [_ERC20TokenAddr, wrappedETHAddr];
+        address[] memory _path = new address[](2);
+        _path[0] = _ERC20TokenAddr;
+        _path[1] = wrappedETHAddr;
         uint256 _deadline = block.timestamp + 600;
         uint[] memory amountsOut = IUniswapV2Router02(routerAddr).swapExactTokensForTokens(_amountIn, _amountOutMin, _path, address(this), _deadline);
         return amountsOut[_path.length - 1];
     }
 
     function _swapTokenForExactWETH(address _ERC20TokenAddr, uint256 _amountOut, uint256 _amountInMax) internal returns (uint256) {
-        address[] memory _path = [_ERC20TokenAddr, wrappedETHAddr];
+        address[] memory _path = new address[](2);
+        _path[0] = _ERC20TokenAddr;
+        _path[1] = wrappedETHAddr;
         uint256 _deadline = block.timestamp + 600;
         uint[] memory amountsIn = IUniswapV2Router02(routerAddr).swapTokensForExactTokens(_amountOut, _amountInMax, _path, address(this), _deadline);
         return amountsIn[0];
     }
 
     function _estimateAmountInWithSlipage(address _ERC20TokenAddr, uint256 _amountOut, uint256 _slippageLiteral, uint256 _slippageDecimal) internal returns (uint256) {
-        address[] memory _path = [_ERC20TokenAddr, wrappedETHAddr];
+        address[] memory _path = new address[](2);
+        _path[0] = _ERC20TokenAddr;
+        _path[1] = wrappedETHAddr;
         if (_slippageLiteral == 0 ||  _slippageDecimal == 0) {
             revert invalidSlippage(_slippageLiteral, _slippageDecimal);
         }
@@ -474,21 +456,21 @@ contract NFTMarket_V4 is INFTMarket_V4, IERC721Receiver {
     /**
      * @notice Get the price of a listed NFT.
      */
-    function getNFTPrice(address _nftAddr, uint256 _tokenId) external view returns (uint256) {
+    function getNFTPrice(address _nftAddr, uint256 _tokenId) public view returns (uint256) {
         return price[_nftAddr][_tokenId];
     }
 
     /**
      * @notice Get the total profit earned by a seller.
      */
-    function getUserProfit() external view returns (uint256) {
+    function getUserProfit() public view returns (uint256) {
         return userProfit[msg.sender];
     }
 
     /**
      * @notice Get the owner of a specific NFT.
      */
-    function getNFTOwner(address _nftAddr, uint256 _tokenId) external view returns (address) {
+    function getNFTOwner(address _nftAddr, uint256 _tokenId) public view returns (address) {
         return IERC721(_nftAddr).ownerOf(_tokenId);
     }
 

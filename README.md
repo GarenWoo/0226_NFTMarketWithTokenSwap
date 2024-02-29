@@ -10,7 +10,7 @@
 
 ## 2. 修改 NFTMarket 使其能够支持使用任意 ERC20 token 购买 NFT
 
-**功能设计**：在用户购买 NFT 时，用户可输入购买 NFT 所使用的 token 的地址`_ERC20TokenAddr`，并指定滑点（`_slippageLiteral`为滑点的数字部分，`_slippageDecimal`为小数点之后的位数）
+**功能设计**：在用户购买 NFT 时，用户可输入购买 NFT 所使用的 token 的地址`_ERC20TokenAddr`，并指定滑点（`_slippageLiteral`为滑点的数字部分，`_slippageDecimal`为不考虑百分号的纯小数的小数点之后的位数）
 
 ### NFTMarket 相关功能代码：
 
@@ -23,8 +23,8 @@
  * @param _ERC20TokenAddr 用户指定的 ERC-20 代币的合约地址
  * @param _nftAddr NFT 合约地址
  * @param _tokenId NFT 的 tokenId
- * @param _slippageLiteral 滑点的数字部分，例如 0.25% 的数字部分为 25 
- * @param _slippageDecimal 滑点的小数点之后的位数，例如 0.03% 的小数点之后的位数为 2
+ * @param _slippageLiteral 滑点的数字部分，例如 0.25%（即 0.0025）的数字部分为 25 
+ * @param _slippageDecimal 滑点的小数点之后的位数，例如 0.03%（即 0.0003）的小数点之后的位数为 4
  */
 function buy(address _ERC20TokenAddr, address _nftAddr, uint256 _tokenId, uint256 _slippageLiteral, uint256 _slippageDecimal) external {
 				// 前置检查
@@ -99,7 +99,9 @@ function _handleNFTPurchaseWithSlippage(address _nftBuyer, address _ERC20TokenAd
             
             // 检查兑换所需要的 token 是否与本合约的 token 余额变化相等
             if (tokenBalanceAfterSwap >= tokenBalanceBeforeSwap || tokenBalanceBeforeSwap - tokenBalanceAfterSwap != tokenAmountPaid) {
-                address[] memory _path = [_ERC20TokenAddr, wrappedETHAddr];
+                address[] memory _path = new address[](2);
+                _path[0] = _ERC20TokenAddr;
+                _path[1] = wrappedETHAddr;
                 revert tokenSwapFailed(_path, NFTPrice, amountInRequired);
             }
             // 令本方法的返回值为实际兑换所需要的 token 数量
@@ -128,7 +130,9 @@ function _handleNFTPurchaseWithSlippage(address _nftBuyer, address _ERC20TokenAd
 
 ```solidity
 function _estimateAmountInWithSlipage(address _ERC20TokenAddr, uint256 _amountOut, uint256 _slippageLiteral, uint256 _slippageDecimal) internal returns (uint256) {
-        address[] memory _path = [_ERC20TokenAddr, wrappedETHAddr];
+        address[] memory _path = new address[](2);
+        _path[0] = _ERC20TokenAddr;
+        _path[1] = wrappedETHAddr;
         // 检查：滑点是否不为 0
         if (_slippageLiteral == 0 ||  _slippageDecimal == 0) {
             revert invalidSlippage(_slippageLiteral, _slippageDecimal);
