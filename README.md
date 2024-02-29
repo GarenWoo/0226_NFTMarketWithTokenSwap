@@ -14,7 +14,7 @@
 
 ### NFTMarket 相关功能代码：
 
-#### A. {buy}：使用任意 token（考虑代币兑换的滑点）购买 NFT
+#### A. {buyNFTWithAnyToken}：使用任意 token（考虑代币兑换的滑点）购买 NFT
 
 ```solidity
 /**
@@ -26,7 +26,7 @@
  * @param _slippageLiteral 滑点的数字部分，例如 0.25%（即 0.0025）的数字部分为 25 
  * @param _slippageDecimal 滑点的小数点之后的位数，例如 0.03%（即 0.0003）的小数点之后的位数为 4
  */
-function buy(address _ERC20TokenAddr, address _nftAddr, uint256 _tokenId, uint256 _slippageLiteral, uint256 _slippageDecimal) external {
+function buyNFTWithAnyToken(address _ERC20TokenAddr, address _nftAddr, uint256 _tokenId, uint256 _slippageLiteral, uint256 _slippageDecimal) external {
 				// 前置检查
         bool checkResult = _beforeNFTPurchase(msg.sender, _ERC20TokenAddr, _nftAddr, _tokenId);
 				// 检查： 购买 NFT 是否需要验证签名，若存在对应的验证接口，则不可绕过验签来购买 NFT

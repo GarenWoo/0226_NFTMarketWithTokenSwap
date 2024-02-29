@@ -27,7 +27,12 @@ interface INFTMarket_V4 {
     /**
      * @dev Emitted when an NFT is bought successfully by a non-owner user.
      */
-    event NFTBought(address indexed user, address erc20TokenAddr, address indexed NFTAddr, uint256 indexed tokenId, uint256 tokenPaid);
+    event NFTBoughtWithAnyToken(address indexed user, address erc20TokenAddr, address indexed NFTAddr, uint256 indexed tokenId, uint256 tokenPaid);
+
+    /**
+     * @dev Emitted when an NFT is bought successfully by a non-owner user.
+     */
+    event NFTBoughtWithGTST(address indexed user, address indexed NFTAddr, uint256 indexed tokenId, uint256 tokenPaid);
 
     /**
      * @dev Emitted when an NFT is bought successfully by a non-owner user with an off-chain signed message in the input form of v, r, s.
@@ -144,14 +149,22 @@ interface INFTMarket_V4 {
      * @dev Delist the NFT from an NFT Market.
      */
     function delist(address _nftAddr, uint256 _tokenId) external;
+    
+    /**
+     * @notice Directly Buy NFT using ERC-20 token of this NFTMarket(named "GSTS") without checking ERC721 token permit.
+     *
+     * @dev Important! If your NFT project supports the function of buying NFT with off-chain signature of messages(i.e.permit), make sure the NFT contract(s) should have realized the functionality of the interface {INFTPermit}.
+     * Without the realization of {realized the functionality of the interface {INFTPermit}.}, malevolent EOAs can directly buy NFTs without permit-checking.
+     */
+    function buyWithGTST(address _nftAddr, uint256 _tokenId, uint256 _tokenAmount) external;
 
     /**
-     * @notice Directly Buy NFT without checking ERC721 token permit.
+     * @notice Buy NFT using any ERC-20 token without checking ERC721 token permit.
      *
-     * @dev Important! If your NFT project supports the function of buying NFT with off-chain signature of messages(i.e.permit), make sure the NFT contract(s) should have realized INFTMarket_V4.
-     * Without the realization of INFTMarket_V4, malevolent EOAs can directly buy NFTs without permit-checking.
+     * @dev Important! If your NFT project supports the function of buying NFT with off-chain signature of messages(i.e.permit), make sure the NFT contract(s) should have realized the functionality of the interface {INFTPermit}.
+     * Without the realization of {realized the functionality of the interface {INFTPermit}.}, malevolent EOAs can directly buy NFTs without permit-checking.
      */
-    function buy(address _ERC20TokenAddr, address _nftAddr, uint256 _tokenId, uint256 _slippageLiteral, uint256 _slippageDecimal) external ;
+    function buyNFTWithAnyToken(address _ERC20TokenAddr, address _nftAddr, uint256 _tokenId, uint256 _slippageLiteral, uint256 _slippageDecimal) external ;
 
     /**
      * @notice Buy NFT with validating the given signature to ensure whitelist membership of `msg.sender`.

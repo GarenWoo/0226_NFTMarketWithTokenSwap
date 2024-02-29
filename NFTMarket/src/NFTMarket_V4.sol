@@ -12,7 +12,6 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "./interfaces/INFTMarket_V4.sol";
 import "./interfaces/INFTPermit.sol";
 import "./interfaces/IUniswapV2Router02.sol";
-import "./interfaces/IUniswapV2Router01.sol";
 import "./interfaces/IWETH9.sol";
 
 /**
@@ -81,7 +80,7 @@ contract NFTMarket_V4 is INFTMarket_V4, IERC721Receiver {
         // If all the checks have passed, here comes the execution of the NFT purchase.
         if (checkResult) {
             uint256 tokenAmountPaid = _handleNFTPurchase(_recipient, _ERC20TokenAddr, nftAddress, tokenId, _tokenAmount);
-            emit NFTBought(_recipient, _ERC20TokenAddr, nftAddress, tokenId, tokenAmountPaid);
+            emit NFTBoughtWithAnyToken(_recipient, _ERC20TokenAddr, nftAddress, tokenId, tokenAmountPaid);
         }
     }
 
@@ -137,12 +136,34 @@ contract NFTMarket_V4 is INFTMarket_V4, IERC721Receiver {
     }
 
     /**
-     * @notice Directly Buy NFT without checking ERC721 token permit.
+     * @notice Directly Buy NFT using ERC-20 token of this NFTMarket(named "GSTS") without checking ERC721 token permit.
      *
      * @dev Important! If your NFT project supports the function of buying NFT with off-chain signature of messages(i.e.permit), make sure the NFT contract(s) should have realized the functionality of the interface {INFTPermit}.
      * Without the realization of {realized the functionality of the interface {INFTPermit}.}, malevolent EOAs can directly buy NFTs without permit-checking.
      */
-    function buy(address _ERC20TokenAddr, address _nftAddr, uint256 _tokenId, uint256 _slippageLiteral, uint256 _slippageDecimal) external {
+    function buyWithGTST(address _nftAddr, uint256 _tokenId, uint256 _tokenAmount) external {
+        bool checkResult = _beforeNFTPurchase(msg.sender, _ERC20TokenAddr, _nftAddr, _tokenId);
+
+        // To avoid users directly buying NFTs which require checking of whitelist membership, here check the interface existence of {_support_IERC721Permit}.
+        bool isERC721PermitSupported = _support_IERC721Permit(_nftAddr);
+        if (isERC721PermitSupported) {
+            revert ERC721PermitBoughtByWrongFunction("buy", "buyWithPermit");
+        }
+        
+        // If all the checks have passed, here comes the execution of the NFT purchase.
+        if (checkResult) {
+            _handleNFTPurchaseUsingGTST(msg.sender, _nftAddr, _tokenId, _tokenAmount);
+            emit NFTBoughtWithGTST(msg.sender, _nftAddr, _tokenId, tokenAmountPaid);
+        }
+    }
+
+    /**
+     * @notice Buy NFT using any ERC-20 token without checking ERC721 token permit.
+     *
+     * @dev Important! If your NFT project supports the function of buying NFT with off-chain signature of messages(i.e.permit), make sure the NFT contract(s) should have realized the functionality of the interface {INFTPermit}.
+     * Without the realization of {realized the functionality of the interface {INFTPermit}.}, malevolent EOAs can directly buy NFTs without permit-checking.
+     */
+    function buyNFTWithAnyToken(address _ERC20TokenAddr, address _nftAddr, uint256 _tokenId, uint256 _slippageLiteral, uint256 _slippageDecimal) external {
         bool checkResult = _beforeNFTPurchase(msg.sender, _ERC20TokenAddr, _nftAddr, _tokenId);
 
         // To avoid users directly buying NFTs which require checking of whitelist membership, here check the interface existence of {_support_IERC721Permit}.
@@ -154,7 +175,7 @@ contract NFTMarket_V4 is INFTMarket_V4, IERC721Receiver {
         // If all the checks have passed, here comes the execution of the NFT purchase.
         if (checkResult) {
             uint256 tokenAmountPaid = _handleNFTPurchaseWithSlippage(msg.sender, _ERC20TokenAddr, _nftAddr, _tokenId, _slippageLiteral, _slippageDecimal);
-            emit NFTBought(msg.sender, _ERC20TokenAddr, _nftAddr, _tokenId, tokenAmountPaid);
+            emit NFTBoughtWithAnyToken(msg.sender, _ERC20TokenAddr, _nftAddr, _tokenId, tokenAmountPaid);
         }
     }
 
@@ -419,6 +440,21 @@ contract NFTMarket_V4 is INFTMarket_V4, IERC721Receiver {
         IERC721(_nftAddr).transferFrom(address(this), _nftBuyer, _tokenId);
         // Add the earned amount of WETH(i.e. the price of the sold NFT) to the balance of the NFT seller.
         userProfit[IERC721(_nftAddr).getApproved(_tokenId)] += NFTPrice;
+        // Reset the price of the sold NFT. This indicates that this NFT is not on sale.
+        delete price[_nftAddr][_tokenId];
+    }
+
+    /**
+     * @dev This internal function only conducts the 'action' of a single NFT purchase using an exact amount of GSTS.
+     * And User should consider the slippage for token-swap.
+     */
+    function _handleNFTPurchaseUsingGTST(address _nftBuyer, address _nftAddr, uint256 _tokenId, uint256 _tokenAmount) internal {
+        bool _success = IERC20(NFTMarketTokenAddr).transferFrom(_nftBuyer, address(this), _tokenAmount);
+        require(_success, "Fail to buy or Allowance is insufficient");
+        // Execute the transfer of the NFT being bought
+        IERC721(_nftAddr).transferFrom(address(this), _nftBuyer, _tokenId);
+        // Add the earned amount of WETH(i.e. the price of the sold NFT) to the balance of the NFT seller.
+        userProfit[IERC721(_nftAddr).getApproved(_tokenId)] += _tokenAmount;
         // Reset the price of the sold NFT. This indicates that this NFT is not on sale.
         delete price[_nftAddr][_tokenId];
     }
