@@ -142,7 +142,7 @@ contract NFTMarket_V4 is INFTMarket_V4, IERC721Receiver {
      * Without the realization of {realized the functionality of the interface {INFTPermit}.}, malevolent EOAs can directly buy NFTs without permit-checking.
      */
     function buyWithGTST(address _nftAddr, uint256 _tokenId, uint256 _tokenAmount) external {
-        bool checkResult = _beforeNFTPurchase(msg.sender, _ERC20TokenAddr, _nftAddr, _tokenId);
+        bool checkResult = _beforeNFTPurchase(msg.sender, NFTMarketTokenAddr, _nftAddr, _tokenId);
 
         // To avoid users directly buying NFTs which require checking of whitelist membership, here check the interface existence of {_support_IERC721Permit}.
         bool isERC721PermitSupported = _support_IERC721Permit(_nftAddr);
@@ -153,7 +153,7 @@ contract NFTMarket_V4 is INFTMarket_V4, IERC721Receiver {
         // If all the checks have passed, here comes the execution of the NFT purchase.
         if (checkResult) {
             _handleNFTPurchaseUsingGTST(msg.sender, _nftAddr, _tokenId, _tokenAmount);
-            emit NFTBoughtWithGTST(msg.sender, _nftAddr, _tokenId, tokenAmountPaid);
+            emit NFTBoughtWithGTST(msg.sender, _nftAddr, _tokenId, _tokenAmount);
         }
     }
 
