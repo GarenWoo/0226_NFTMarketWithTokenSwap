@@ -4,9 +4,9 @@
 
 ## 1. 部署 UniswapV2 系列合约
 
-- **UniswapV2Factory**：https://sepolia.etherscan.io/address/0xB771Da2e98A021ADd280064DE42B1fa134ED9327
-- **WETH9**：https://sepolia.etherscan.io/address/0x550036343c294aa578a158c98b7a37d3d6a80bf8
-- **UniswapV2Router02**：https://sepolia.etherscan.io/address/0x0c247e6292128f61486c4a64937afc54cd092db5#code
+- **UniswapV2Factory**（2024.3.5 更新）：https://sepolia.etherscan.io/address/0xbcB2A83c6DCA01Ad3436726EB4FB121d9833A595
+- **WETH9**（2024.3.5 更新）：https://sepolia.etherscan.io/address/0x55F74fc2b372188e1d5ceD6a09b19086D7198eC8
+- **UniswapV2Router02**（2024.3.5 更新）：https://sepolia.etherscan.io/address/0x7B650C8eCad5158a8B9AB450Fe4E91C4b182EB66
 
 ## 2. 修改 NFTMarket 使其能够支持使用任意 ERC20 token 购买 NFT
 
